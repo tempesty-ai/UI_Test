@@ -22,6 +22,12 @@
             "command": "python -c \"\nimport json, sys, subprocess\nd = json.load(sys.stdin)\nfp = d.get('tool_input', {}).get('file_path', '')\nif 'SUMMARY.md' in fp:\n    subprocess.run(['git', '-C', 'D:/code/qa', 'add', '.'])\n    subprocess.run(['git', '-C', 'D:/code/qa', 'commit', '-m', 'feat: QA 테스트 결과 자동 저장'])\n    subprocess.run(['git', '-C', 'D:/code/qa', 'push'])\n\" 2>/dev/null || true",
             "statusMessage": "📤 QA 결과 GitHub에 자동 저장 중...",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "python -c \"\nimport json, sys, re, os, urllib.request\nd = json.load(sys.stdin)\nfp = d.get('tool_input', {}).get('file_path', '')\nif 'ISSUE.md' not in fp or 'issues' not in fp: exit(0)\ntoken = os.environ.get('GH_TOKEN', '')\nif not token: exit(0)\ntry:\n    content = open(fp, encoding='utf-8').read()\nexcept: exit(0)\ntitle_m = re.search(r'# (ISSUE-[0-9]+: .+)', content)\nsev_m   = re.search(r'\\*\\*심각도\\*\\*: (.+)', content)\nif not title_m: exit(0)\ntitle   = title_m.group(1).strip()\nsev     = sev_m.group(1).strip() if sev_m else 'P3 Minor'\nlabel_map = {'P1': 'P1-critical', 'P2': 'P2-major', 'P3': 'P3-minor'}\nlabel   = next((v for k, v in label_map.items() if k in sev), 'P3-minor')\nbody    = content[:3000] + ('...' if len(content) > 3000 else '')\npayload = json.dumps({'title': title, 'body': body, 'labels': [label, 'QA-auto']}).encode('utf-8')\nreq = urllib.request.Request(\n    'https://api.github.com/repos/tempesty-ai/UI_Test/issues',\n    data=payload,\n    headers={'Authorization': 'token ' + token, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json'}\n)\nresp = json.loads(urllib.request.urlopen(req, timeout=10).read())\nprint(json.dumps({'systemMessage': '🐛 GitHub Issue 등록 완료: ' + resp.get('html_url', '')}))\n\" 2>/dev/null || true",
+            "statusMessage": "🐛 GitHub Issue 자동 등록 중...",
+            "timeout": 20
           }
         ]
       }

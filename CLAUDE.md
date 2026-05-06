@@ -184,6 +184,35 @@ ISSUE-004_cart_icon_hidden_in_mobile/
 
 ---
 
+## GitHub Issues 자동 등록 설정
+
+ISSUE.md 저장 시 GitHub Issues 탭에 자동으로 이슈가 등록된다. `GH_TOKEN` 환경변수가 필요하다.
+
+### GitHub Personal Access Token 발급
+1. https://github.com/settings/tokens → **Generate new token (classic)**
+2. 권한: `repo` 체크
+3. 토큰 복사 (`ghp_...`)
+
+### 환경변수 등록 (Windows)
+```powershell
+[System.Environment]::SetEnvironmentVariable("GH_TOKEN", "ghp_여기에토큰", "User")
+```
+등록 후 Claude Code 재시작 필요.
+
+### GitHub 라벨 초기 생성 (최초 1회)
+```bash
+python scripts/setup_github_labels.py
+```
+`P1-critical`, `P2-major`, `P3-minor`, `QA-auto` 라벨이 생성된다.
+
+### 동작 방식
+- ISSUE.md 저장 직후 PostToolUse Hook이 GitHub API 호출
+- 이슈 제목: `ISSUE-001: 모바일 이미지 미렌더링`
+- 라벨: 심각도에 따라 자동 분류 + `QA-auto` 태그
+- `GH_TOKEN` 없으면 조용히 건너뜀
+
+---
+
 ## Slack 알림 설정
 
 QA 완료 시 Slack에 자동 메시지를 보내려면 Webhook URL을 환경변수로 등록한다.
