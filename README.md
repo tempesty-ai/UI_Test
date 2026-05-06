@@ -2,63 +2,105 @@
 
 > Playwright MCP + Claude Code Hook 기반 웹 애플리케이션 시각적 QA 자동화 시스템
 
+GitHub: https://github.com/tempesty-ai/UI_Test
+
 ---
 
-## 무엇을 만들었나
+## 핵심 개념 정리
 
-이 프로젝트는 세 개의 레이어로 구성된다.
+### AI 에이전트란?
 
-### Layer 1 — SKILL.md (Claude의 두뇌 스크립트)
+일반 프로그램은 "A이면 B해라"처럼 모든 행동이 코드에 미리 적혀있다.
+**AI 에이전트는 목표만 주면 스스로 방법을 판단하고 행동한다.**
 
-`qa-visual-tester/SKILL.md` — Claude가 직접 읽는 파일. QA를 어떻게 수행할지 **생각의 순서와 출력 형식**을 정의한다.
+```
+일반 프로그램  →  시키는 것만 함 (판단 없음)
+AI 에이전트   →  목표를 받아 스스로 계획하고 실행 (판단 있음)
+```
 
-| 정의 내용 | 예시 |
+이 프로젝트에서 Claude는 `"QA 해줘"` 한 마디를 받아
+무엇을 먼저 테스트할지, 어떤 도구를 쓸지, 이슈를 어떻게 분류할지
+**스스로 판단해서 끝까지 실행한다.**
+
+---
+
+### 하네스 엔지니어링이란?
+
+AI 에이전트가 혼자 행동하면 실수하거나 비효율적일 수 있다.
+**하네스(Harness)는 에이전트 바깥에서 행동 전후를 자동으로 통제하는 구조다.**
+
+> 하네스(Harness) = 말에 채우는 마구(고삐). 말이 아무리 빨라도 방향을 잡아주는 것.
+
+- 에이전트가 잘못된 방향으로 가면 → **막는다** (가드레일)
+- 에이전트가 결과를 저장하면 → **자동으로 백업한다** (부작용 자동화)
+- 에이전트가 일을 끝내면 → **요약을 뽑아낸다** (자동 리포트)
+
+**에이전트는 하네스의 존재를 모른다. 그냥 일하는데 뒤에서 알아서 돌아간다.**
+
+---
+
+### SKILL.md는 뭐가 다른가?
+
+```
+SKILL.md   →  에이전트 안에 영향을 준다
+              "QA를 할 때는 이런 순서로 생각해" 라고 가르치는 것
+              에이전트 설계
+
+하네스     →  에이전트 밖에서 개입한다
+              에이전트가 행동하는 타이밍에 자동으로 끼어드는 것
+              에이전트 제어
+```
+
+| | SKILL.md | 하네스 (Hook) |
+|--|---------|--------------|
+| 누가 읽나 | Claude | Claude Code 런타임 |
+| 언제 작동 | Claude가 생각할 때 | Claude가 도구를 쓰는 순간 |
+| 목적 | 판단 방식 가르치기 | 행동 전후 자동 제어 |
+| Claude가 아나 | ✅ 알고 따름 | ❌ 모름 |
+
+---
+
+## 이 프로젝트에 적용한 것들
+
+### AI 에이전트 — Claude가 스스로 판단하는 부분
+
+| 구성요소 | 역할 |
 |---------|------|
-| 실행 단계 | 요구사항 수집 → 테스트 시트 작성 → Playwright 실행 → 이슈 기록 |
-| 출력 형식 | ISSUE.md 템플릿, QA_SHEET.md 표 구조, SUMMARY.md 형식 |
-| 도구 사용법 | playwright_navigate / playwright_screenshot / playwright_evaluate 사용 순서 |
-| 판단 기준 | PASS / FAIL / WARNING 판정 방식, 이슈 심각도 분류 |
+| **SKILL.md** | Claude에게 QA 절차·판단 기준·출력 형식을 가르침 |
+| **targets.json** | Claude가 읽는 설정 파일. URL만 바꾸면 대상 자동 변경 |
+| **Playwright MCP** | Claude가 직접 호출하는 브라우저 조작 도구 |
+| **Cron 스케줄러** | 평일 09:00 Claude에게 자동으로 QA 프롬프트 주입 |
 
-> SKILL.md가 없으면 Claude는 QA를 어떻게 해야 할지 모른다. 스킬은 Claude에게 역할과 절차를 부여하는 파일이다.
+### 하네스 — 에이전트 밖에서 자동으로 제어하는 부분
 
-### Layer 2 — 하네스 (에이전트를 감싸는 제어 구조)
-
-`settings.json` — **Claude Code 런타임**이 읽는 파일. Claude가 도구를 실행하는 타이밍에 자동으로 끼어든다. Claude는 Hook의 존재를 모른다.
-
-| 구성요소 | Hook 이벤트 | 누가 읽는가 | 역할 |
-|---------|------------|-----------|------|
-| **URL 가드레일** | `PreToolUse` | Claude Code 런타임 | 브라우저 열기 직전 대상 사이트 생사 여부 체크. 다운이면 차단 |
-| **자동 git push** | `PostToolUse` | Claude Code 런타임 | SUMMARY.md 저장을 감지해 자동으로 git add → commit → push |
-| **결과 요약** | `Stop` | Claude Code 런타임 | 세션 종료 시 PASS / FAIL / WARN 카운트를 터미널에 출력 |
-| **시작 대시보드** | `SessionStart` | Claude Code 런타임 | 세션 열릴 때 마지막 QA 결과 + 다음 테스트 대상을 Claude에게 주입 |
-
-### Layer 3 — 자율 트리거 (에이전트를 자동으로 깨우는 것)
-
-| 구성요소 | 파일 | 누가 읽는가 | 역할 |
-|---------|------|-----------|------|
-| **Cron 스케줄러** | Claude Code 내장 | Claude Code 스케줄러 | 평일 09:00 세션에 QA 프롬프트 자동 주입. 사람 없이 자율 트리거 |
-| **targets.json** | `targets.json` | Claude (스킬 내부에서) | 무엇을 테스트할지 외부화. URL만 바꾸면 스킬 수정 없이 대상 변경 |
-| **Playwright MCP** | 전역 MCP 설정 | Claude (도구로 호출) | 실제 브라우저(Chrome)를 직접 조작하는 실행 도구 |
+| Hook | 언제 발동 | 하는 일 |
+|------|---------|--------|
+| **PreToolUse** | Claude가 브라우저 열기 직전 | 대상 사이트 생사 여부 확인. 다운이면 차단 |
+| **PostToolUse** | Claude가 SUMMARY.md 저장 직후 | 자동으로 git add → commit → push |
+| **Stop** | Claude가 응답 완료 직후 | PASS / FAIL / WARN 카운트 터미널 출력 |
+| **SessionStart** | Claude Code 세션 시작 시 | 마지막 결과 + 다음 대상 대시보드 주입 |
 
 ---
 
 ## 전체 흐름
 
 ```
-[Cron 09:00]  자동 트리거 (또는 사람이 직접 명령)
-      ↓
-[SessionStart Hook]  마지막 결과 대시보드 출력
-      ↓
-[qa-visual-tester 스킬]  targets.json 읽고 테스트 계획 수립
-      ↓
-[PreToolUse Hook]  URL 접근 가능 여부 검증 → 실패 시 차단
-      ↓
-[Playwright MCP]  실제 브라우저에서 3개 뷰포트 테스트
-      ↓
-[PostToolUse Hook]  SUMMARY.md 저장 감지 → GitHub 자동 push
-      ↓
-[Stop Hook]  PASS / FAIL / WARN 요약 출력
+[Cron 09:00] 자동 트리거 ──────────────────────────────┐
+                                                       │ 사람이 직접 말해도 동일
+[SessionStart Hook] "어제 결과 / 오늘 대상" 브리핑       │
+        ↓                                              │
+[Claude + SKILL.md] targets.json 읽고 테스트 계획 수립 ←┘
+        ↓
+[PreToolUse Hook] URL 죽었으면 여기서 차단
+        ↓
+[Playwright MCP] 실제 브라우저 — 3개 뷰포트 테스트
+        ↓
+[PostToolUse Hook] SUMMARY.md 저장 감지 → GitHub 자동 push
+        ↓
+[Stop Hook] PASS / FAIL / WARN 요약 출력
 ```
+
+**에이전트가 일하고, 하네스가 그 전후를 통제한다. 사람은 targets.json URL만 관리하면 끝.**
 
 ---
 
@@ -124,8 +166,8 @@ targets.json 읽고 QA 테스트 실행해줘
 | 기술 | 용도 |
 |------|------|
 | **Claude Code** | AI 에이전트 실행 환경 |
-| **Claude Code Skill** | `qa-visual-tester` — 재사용 가능한 QA 플로우 정의 |
-| **Claude Code Hooks** | 4단계 하네스 파이프라인 (PreToolUse / PostToolUse / Stop / SessionStart) |
+| **Claude Code Skill** | `qa-visual-tester` — QA 판단 절차 정의 |
+| **Claude Code Hooks** | 4단계 하네스 (PreToolUse / PostToolUse / Stop / SessionStart) |
 | **Playwright MCP** (`@playwright/mcp`) | 실제 브라우저 제어 |
 | **CronCreate** | 자율 스케줄링 (평일 09:00 자동 실행) |
 | **Git** | 테스트 결과 자동 버전 관리 |
