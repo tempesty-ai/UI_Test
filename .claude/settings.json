@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"\nimport json, sys, subprocess\nd = json.load(sys.stdin)\nfp = d.get('tool_input', {}).get('file_path', '')\nif 'SUMMARY.md' in fp:\n    subprocess.run(['git', '-C', 'D:/code/qa', 'add', '.'])\n    subprocess.run(['git', '-C', 'D:/code/qa', 'commit', '-m', 'feat: QA 테스트 결과 자동 저장'])\n    subprocess.run(['git', '-C', 'D:/code/qa', 'push'])\n\" 2>/dev/null || true",
+            "statusMessage": "QA 결과 GitHub에 자동 저장 중...",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
