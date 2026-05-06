@@ -12,19 +12,19 @@
 
 ### P2 Major
 
-- **[ISSUE-001](./issues/ISSUE-001_모바일_이미지_미렌더링/ISSUE.md)**: 모바일/태블릿 뷰포트에서 hammer 계열 상품 이미지 4종 미렌더링
+- **[ISSUE-001](./issues/ISSUE-001_mobile_image_not_rendering/ISSUE.md)**: 모바일/태블릿 뷰포트에서 hammer 계열 상품 이미지 4종 미렌더링
   - 영향: 375px, 768px 뷰포트에서 Claw Hammer, Hammer, Thor Hammer 등 4개 상품 이미지 공백
   - 데스크톱(1280px)에서는 정상 → lazy loading 또는 AVIF 렌더링 타이밍 버그 추정
 
-- **[ISSUE-003](./issues/ISSUE-003_콘솔에러_3건/ISSUE.md)**: 전 페이지 JavaScript 콘솔 에러 3건 상시 발생
+- **[ISSUE-003](./issues/ISSUE-003_console_errors_on_load/ISSUE.md)**: 전 페이지 JavaScript 콘솔 에러 3건 상시 발생
   - 영향: 잠재적 기능 오동작 위험, 코드 품질 저하
 
 ### P3 Minor
 
-- **[ISSUE-002](./issues/ISSUE-002_모바일_가격텍스트_잘림/ISSUE.md)**: 모바일(375px)에서 상품 가격 텍스트 잘림
+- **[ISSUE-002](./issues/ISSUE-002_mobile_price_text_truncated/ISSUE.md)**: 모바일(375px)에서 상품 가격 텍스트 잘림
   - 예: $14.15 → "$14.5"로 표시
 
-- **[ISSUE-004](./issues/ISSUE-004_장바구니_아이콘_숨김/ISSUE.md)**: 소형 뷰포트에서 장바구니 아이콘 햄버거 메뉴 내부에만 표시
+- **[ISSUE-004](./issues/ISSUE-004_cart_icon_hidden_in_mobile/ISSUE.md)**: 소형 뷰포트에서 장바구니 아이콘 햄버거 메뉴 내부에만 표시
   - 상품 담은 후 헤더에서 즉시 카트 상태 확인 불가
 
 ---
@@ -63,8 +63,8 @@ D:\code\qa\20260506_practicesoftwaretesting\
 ├── QA_SHEET.md
 ├── SUMMARY.md
 └── issues\
-    ├── ISSUE-001_모바일_이미지_미렌더링\
-    ├── ISSUE-002_모바일_가격텍스트_잘림\
-    ├── ISSUE-003_콘솔에러_3건\
-    └── ISSUE-004_장바구니_아이콘_숨김\
+    ├── ISSUE-001_mobile_image_not_rendering\
+    ├── ISSUE-002_mobile_price_text_truncated\
+    ├── ISSUE-003_console_errors_on_load\
+    └── ISSUE-004_cart_icon_hidden_in_mobile\
 ```
