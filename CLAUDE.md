@@ -56,6 +56,65 @@ Playwright MCP는 프로젝트 루트 내부에만 파일 저장이 가능하다
 
 ---
 
+## 회귀 테스트 추적
+
+이미 발견된 이슈가 수정 후 재테스트될 때 상태를 추적한다.
+
+**ISSUE.md 상태 필드** — 모든 이슈에 아래 필드를 포함한다:
+
+```markdown
+- **상태**: Open | Fixed | Reopened
+- **수정 확인일**: YYYY-MM-DD (Fixed 시 기재)
+```
+
+**재테스트 시 디렉토리 규칙**
+- 동일 이슈가 재발한 경우: 기존 `ISSUE.md`의 상태를 `Reopened`로 변경하고 재현 날짜를 비고에 추가
+- 신규 테스트 세션에서 이전 이슈 재확인 시: `QA_SHEET.md`의 해당 항목에 `♻️ REOPEN` 표기
+
+---
+
+## 인증이 필요한 사이트 테스트
+
+로그인/인증이 필요한 사이트 테스트 시 아래 규칙을 따른다.
+
+- 계정 정보는 **절대 ISSUE.md, QA_SHEET.md, 코드에 하드코딩하지 않는다**
+- 테스트용 계정은 `.env.test` 파일로 관리하며 `.gitignore`에 등록한다
+- Playwright 세션 쿠키/토큰이 스크린샷에 노출되지 않도록 민감 영역은 크롭 처리한다
+
+```bash
+# .env.test 예시 (gitignore 대상)
+TEST_EMAIL=your@email.com
+TEST_PASSWORD=yourpassword
+```
+
+ISSUE.md 작성 시 계정 정보 대신 `[테스트 계정]` 으로 마스킹한다.
+
+---
+
+## 이슈 디렉토리 네이밍 규칙
+
+한글 디렉토리명은 OS/Git 환경에 따라 인코딩이 깨질 수 있으므로 **영문+숫자+언더스코어**만 사용한다.
+
+```
+# ❌ 피할 것
+ISSUE-001_모바일_이미지_미렌더링/
+
+# ✅ 올바른 형식
+ISSUE-001_mobile_image_not_rendering/
+ISSUE-002_mobile_price_text_truncated/
+ISSUE-003_console_errors_on_load/
+ISSUE-004_cart_icon_hidden_in_mobile/
+```
+
+테스트 세션 디렉토리도 동일하게 영문으로 작성한다:
+```
+# ✅
+20260506_practicesoftwaretesting/
+20260506_bunjang_co_kr/
+```
+
+---
+
 ## Git 워크플로
 
 ```bash
