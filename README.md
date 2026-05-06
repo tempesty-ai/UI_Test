@@ -6,25 +6,39 @@
 
 ## 무엇을 만들었나
 
-이 프로젝트는 두 개의 레이어로 구성된다.
+이 프로젝트는 세 개의 레이어로 구성된다.
 
-### AI 에이전트 (자율 실행 주체)
+### Layer 1 — SKILL.md (Claude의 두뇌 스크립트)
 
-| 구성요소 | 파일 | 역할 |
-|---------|------|------|
-| **qa-visual-tester 스킬** | `qa-visual-tester/SKILL.md` | 테스트 계획 수립 → Playwright 실행 → 이슈 기록까지 스스로 판단 |
-| **targets.json** | `targets.json` | 에이전트가 읽는 설정. URL·테스트 포커스를 외부화해 프롬프트 없이 대상 변경 가능 |
-| **Playwright MCP** | 전역 MCP 설정 | 실제 브라우저(Chrome)를 직접 조작하는 도구 레이어 |
-| **Cron 스케줄러** | Claude Code 내장 | 평일 09:00 세션에 QA 프롬프트 자동 주입 — 사람 없이 자율 트리거 |
+`qa-visual-tester/SKILL.md` — Claude가 직접 읽는 파일. QA를 어떻게 수행할지 **생각의 순서와 출력 형식**을 정의한다.
 
-### 하네스 (에이전트를 감싸는 제어 구조)
+| 정의 내용 | 예시 |
+|---------|------|
+| 실행 단계 | 요구사항 수집 → 테스트 시트 작성 → Playwright 실행 → 이슈 기록 |
+| 출력 형식 | ISSUE.md 템플릿, QA_SHEET.md 표 구조, SUMMARY.md 형식 |
+| 도구 사용법 | playwright_navigate / playwright_screenshot / playwright_evaluate 사용 순서 |
+| 판단 기준 | PASS / FAIL / WARNING 판정 방식, 이슈 심각도 분류 |
 
-| 구성요소 | Hook 이벤트 | 역할 |
-|---------|------------|------|
-| **URL 가드레일** | `PreToolUse` | 브라우저 열기 직전 대상 사이트 생사 여부 체크. 다운이면 차단 |
-| **자동 git push** | `PostToolUse` | SUMMARY.md 저장을 감지해 자동으로 git add → commit → push |
-| **결과 요약** | `Stop` | 세션 종료 시 PASS / FAIL / WARN 카운트를 터미널에 출력 |
-| **시작 대시보드** | `SessionStart` | 세션 열릴 때 마지막 QA 결과 + 다음 테스트 대상을 한눈에 표시 |
+> SKILL.md가 없으면 Claude는 QA를 어떻게 해야 할지 모른다. 스킬은 Claude에게 역할과 절차를 부여하는 파일이다.
+
+### Layer 2 — 하네스 (에이전트를 감싸는 제어 구조)
+
+`settings.json` — **Claude Code 런타임**이 읽는 파일. Claude가 도구를 실행하는 타이밍에 자동으로 끼어든다. Claude는 Hook의 존재를 모른다.
+
+| 구성요소 | Hook 이벤트 | 누가 읽는가 | 역할 |
+|---------|------------|-----------|------|
+| **URL 가드레일** | `PreToolUse` | Claude Code 런타임 | 브라우저 열기 직전 대상 사이트 생사 여부 체크. 다운이면 차단 |
+| **자동 git push** | `PostToolUse` | Claude Code 런타임 | SUMMARY.md 저장을 감지해 자동으로 git add → commit → push |
+| **결과 요약** | `Stop` | Claude Code 런타임 | 세션 종료 시 PASS / FAIL / WARN 카운트를 터미널에 출력 |
+| **시작 대시보드** | `SessionStart` | Claude Code 런타임 | 세션 열릴 때 마지막 QA 결과 + 다음 테스트 대상을 Claude에게 주입 |
+
+### Layer 3 — 자율 트리거 (에이전트를 자동으로 깨우는 것)
+
+| 구성요소 | 파일 | 누가 읽는가 | 역할 |
+|---------|------|-----------|------|
+| **Cron 스케줄러** | Claude Code 내장 | Claude Code 스케줄러 | 평일 09:00 세션에 QA 프롬프트 자동 주입. 사람 없이 자율 트리거 |
+| **targets.json** | `targets.json` | Claude (스킬 내부에서) | 무엇을 테스트할지 외부화. URL만 바꾸면 스킬 수정 없이 대상 변경 |
+| **Playwright MCP** | 전역 MCP 설정 | Claude (도구로 호출) | 실제 브라우저(Chrome)를 직접 조작하는 실행 도구 |
 
 ---
 
