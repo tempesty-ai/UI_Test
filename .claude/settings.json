@@ -1,5 +1,18 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__playwright__browser_navigate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"\nimport json, sys, urllib.request, urllib.error\nd = json.load(sys.stdin)\nurl = d.get('tool_input', {}).get('url', '')\nif not url:\n    exit(0)\ntry:\n    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})\n    urllib.request.urlopen(req, timeout=5)\nexcept urllib.error.HTTPError:\n    pass\nexcept Exception as e:\n    print(json.dumps({'continue': False, 'stopReason': f'❌ URL 접근 불가: {url}\\n사이트가 다운됐거나 주소가 잘못됐습니다.\\n오류: {str(e)}' }))\n\" 2>/dev/null || true",
+            "statusMessage": "🔍 URL 접근 가능 여부 확인 중...",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write",
@@ -7,8 +20,20 @@
           {
             "type": "command",
             "command": "python -c \"\nimport json, sys, subprocess\nd = json.load(sys.stdin)\nfp = d.get('tool_input', {}).get('file_path', '')\nif 'SUMMARY.md' in fp:\n    subprocess.run(['git', '-C', 'D:/code/qa', 'add', '.'])\n    subprocess.run(['git', '-C', 'D:/code/qa', 'commit', '-m', 'feat: QA 테스트 결과 자동 저장'])\n    subprocess.run(['git', '-C', 'D:/code/qa', 'push'])\n\" 2>/dev/null || true",
-            "statusMessage": "QA 결과 GitHub에 자동 저장 중...",
+            "statusMessage": "📤 QA 결과 GitHub에 자동 저장 중...",
             "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"\nimport os, re, glob, json, sys\nsys.stdin.read()\nfiles = glob.glob('D:/code/qa/*/SUMMARY.md')\nif not files:\n    exit(0)\nlatest = max(files, key=os.path.getmtime)\ncontent = open(latest, encoding='utf-8').read()\npass_m = re.search(r'PASS.*?(\\\\d+)개', content)\nfail_m = re.search(r'FAIL.*?(\\\\d+)개', content)\nwarn_m = re.search(r'WARNING.*?(\\\\d+)개', content)\nurl_m  = re.search(r'대상 URL.*?(https?://\\\\S+)', content)\npasses = pass_m.group(1) if pass_m else '?'\nfails  = fail_m.group(1) if fail_m else '?'\nwarn   = warn_m.group(1) if warn_m else '?'\nurl    = url_m.group(1)  if url_m  else ''\nmsg = f'📋 QA 완료 | {url}\\n✅ PASS {passes}  ❌ FAIL {fails}  ⚠️ WARN {warn}'\nprint(json.dumps({'systemMessage': msg}))\n\" 2>/dev/null || true",
+            "statusMessage": "📋 QA 결과 요약 중...",
+            "timeout": 10
           }
         ]
       }

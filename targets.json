@@ -1,0 +1,9 @@
+{
+  "targets": [
+    {
+      "url": "https://practicesoftwaretesting.com",
+      "name": "practicesoftwaretesting",
+      "focus": ["반응형", "로그인 폼", "장바구니", "검색", "카테고리 필터"]
+    }
+  ]
+}
