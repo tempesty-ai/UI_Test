@@ -139,6 +139,86 @@ playwright_resize → 뷰포트 크기 변경 (반응형 테스트)
 
 ---
 
+### 성능 기준 (모든 테스트에 공통 적용)
+
+페이지 이동 후 반드시 아래 성능 지표를 `browser_evaluate`로 측정하고 기준 초과 시 이슈로 기록한다.
+
+**측정 방법:**
+```javascript
+// browser_evaluate로 실행
+const t = performance.getEntriesByType('navigation')[0];
+const loadTime = Math.round(t.loadEventEnd - t.startTime);
+const domReady = Math.round(t.domContentLoadedEventEnd - t.startTime);
+
+// 이미지 크기 체크
+const images = Array.from(document.images).map(img => ({
+  src: img.src,
+  naturalW: img.naturalWidth,
+  naturalH: img.naturalHeight,
+  broken: img.naturalWidth === 0
+}));
+
+// 콘솔 에러는 browser_console_messages 로 별도 확인
+```
+
+**판정 기준:**
+
+| 지표 | PASS | WARNING | FAIL |
+|------|------|---------|------|
+| 페이지 전체 로딩 | 3초 미만 | 3~5초 | 5초 초과 |
+| DOM 준비 시간 | 1.5초 미만 | 1.5~3초 | 3초 초과 |
+| 깨진 이미지 | 0개 | — | 1개 이상 |
+| JS 콘솔 에러 | 0개 | — | 1개 이상 (P2) |
+
+---
+
+### 특정 플로우 테스트 (필수 시나리오)
+
+기본 UI 체크 외에 아래 플로우를 반드시 시나리오 형태로 검증한다.
+
+#### 플로우 1 — 비로그인 보호 페이지 접근
+```
+1. 로그아웃 상태에서 마이페이지 / 주문내역 등 인증 필요 URL 직접 접근
+2. 로그인 페이지로 리다이렉트 되는지 확인
+   → 리다이렉트 안 되면: P1 FAIL (인증 미적용)
+   → 리다이렉트 되면: PASS
+```
+
+#### 플로우 2 — 검색 결과 없음 처리
+```
+1. 검색창에 절대 없을 키워드 입력 (예: "zzzzzzzzz99999")
+2. 결과 화면 확인
+   → 빈 화면만 나오면: P2 FAIL (빈 상태 UI 없음)
+   → "검색 결과가 없습니다" 등 안내 문구 있으면: PASS
+```
+
+#### 플로우 3 — 폼 유효성 검사
+```
+1. 필수 입력 폼을 빈 값으로 제출
+2. 에러 메시지 노출 여부 확인
+   → 에러 없이 제출되면: P1 FAIL
+   → 에러 메시지 표시되면: PASS
+
+3. 이메일 필드에 잘못된 형식 입력 (예: "abc")
+   → 형식 오류 메시지 없으면: P2 FAIL
+```
+
+#### 플로우 4 — 핵심 CTA 버튼 동작
+```
+1. 메인 페이지에서 가장 중요한 버튼 클릭 (장바구니 담기, 회원가입, 시작하기 등)
+2. 의도한 다음 화면으로 이동하는지 확인
+   → 아무 반응 없으면: P1 FAIL
+   → 에러 페이지로 가면: P1 FAIL
+   → 정상 이동: PASS
+```
+
+#### 플로우 5 — 네트워크 에러 내성 (선택)
+```
+targets.json에 "extra" 항목이 있으면 해당 시나리오를 추가로 실행한다.
+```
+
+---
+
 ## 4단계: 이슈 기록
 
 ### 디렉토리 구조
