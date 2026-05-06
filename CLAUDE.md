@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 개요
 
-이 레포는 **QA 시각적 테스트 자동화** 저장소다. `qa-visual-tester` 스킬을 사용해 웹 애플리케이션을 Playwright MCP로 직접 브라우저 검증하고, 발견된 이슈를 날짜별 디렉토리에 체계적으로 기록한다.
+이 레포는 **QA 시각적 테스트 자동화 + 하네스 파이프라인** 저장소다. `qa-visual-tester` 스킬과 Hook 기반 하네스로 웹 애플리케이션을 자동 검증하고, 발견된 이슈를 체계적으로 기록한다.
 
 GitHub: https://github.com/tempesty-ai/UI_Test
 
@@ -14,6 +14,8 @@ GitHub: https://github.com/tempesty-ai/UI_Test
 
 ```
 D:\code\qa\
+├── .claude/
+│   └── settings.json                   ← Hook 파이프라인 설정
 ├── qa-visual-tester/
 │   └── SKILL.md                        ← QA 스킬 정의 (Claude 스킬)
 ├── [YYYYMMDD]_[도메인]/                 ← 테스트 세션 (날짜_사이트명)
@@ -23,6 +25,7 @@ D:\code\qa\
 │       └── ISSUE-[번호]_[제목]/
 │           ├── ISSUE.md                ← 이슈 상세 (심각도/재현방법/스크린샷)
 │           └── screenshot.png
+├── targets.json                        ← 테스트 대상 URL 설정
 └── CLAUDE.md
 ```
 
@@ -30,10 +33,76 @@ D:\code\qa\
 
 ## QA 테스트 실행
 
-새 사이트 테스트 시 `qa-visual-tester` 스킬을 사용한다. 스킬이 자동으로:
-1. 테스트 시트 작성
-2. Playwright MCP(`mcp__playwright__*`)로 실제 브라우저 검증
-3. `D:\code\qa\[YYYYMMDD_도메인]\` 하위에 결과 저장
+**테스트 대상 URL은 `targets.json`에서 관리한다.** URL을 바꾸려면 파일만 수정하면 된다.
+
+테스트 실행 시 `qa-visual-tester` 스킬을 사용한다:
+```
+targets.json 읽고 QA 테스트 실행해줘
+```
+
+스킬이 자동으로:
+1. `targets.json` 에서 URL·테스트 범위 읽기
+2. 테스트 시트 작성
+3. Playwright MCP(`mcp__playwright__*`)로 실제 브라우저 검증
+4. `D:\code\qa\[YYYYMMDD_도메인]\` 하위에 결과 저장
+
+---
+
+## AI 에이전트 아키텍처
+
+이 레포는 **4계층 자율 에이전트** 구조로 설계되어 있다.
+
+```
+┌─────────────────────────────────────────────────┐
+│  Layer 4: 자율 스케줄러                           │
+│  CronCreate — 평일 09:03 자동 트리거              │
+│  (Claude Code 세션이 열려 있는 동안 활성화)         │
+└────────────────────┬────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────────┐
+│  Layer 3: 하네스 (Hook 파이프라인)                │
+│  PreToolUse  → URL 사전 검증                      │
+│  PostToolUse → SUMMARY.md 저장 시 git push        │
+│  Stop        → PASS/FAIL/WARN 결과 요약           │
+│  SessionStart→ 마지막 결과 + 다음 대상 대시보드    │
+└────────────────────┬────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────────┐
+│  Layer 2: 스킬 (qa-visual-tester)                │
+│  targets.json 읽기 → 테스트 시트 작성             │
+│  Playwright MCP 실행 → 이슈 기록                  │
+└────────────────────┬────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────────┐
+│  Layer 1: 도구 (Playwright MCP)                  │
+│  실제 브라우저 조작 — 클릭, 스크린샷, JS 실행      │
+└─────────────────────────────────────────────────┘
+```
+
+**에이전트 자율성 흐름:**
+1. Cron이 세션에 "QA 실행해줘" 프롬프트를 자동 주입
+2. 에이전트가 targets.json에서 URL·포커스 스스로 판단
+3. 브라우저 열기 전 URL 생사 여부 자동 검증 (PreToolUse)
+4. 테스트 완료 → SUMMARY.md 저장 → GitHub 자동 push (PostToolUse)
+5. 세션 종료 시 결과 요약 출력 (Stop)
+6. 다음 세션 시작 시 이전 결과 대시보드 표시 (SessionStart)
+
+**크론 스케줄 재등록 방법** (세션 재시작 시 필요):
+```
+평일 매일 09:03 자동 QA 실행 크론 등록해줘
+```
+
+---
+
+## Hook 파이프라인 (하네스)
+
+`.claude/settings.json` 에 3단계 Hook이 등록되어 있다. `D:\code\qa` 에서 Claude Code를 열면 자동 활성화된다.
+
+| 단계 | Hook | 이벤트 | 동작 |
+|------|------|--------|------|
+| 1 | PreToolUse | Playwright navigate 직전 | URL 접근 가능 여부 체크, 다운 시 중단 |
+| 2 | PostToolUse | SUMMARY.md 저장 직후 | 자동 git add → commit → push |
+| 3 | Stop | Claude 응답 완료 후 | 터미널에 PASS/FAIL/WARN 결과 요약 출력 |
 
 **Playwright MCP 주요 도구**
 - `mcp__playwright__browser_navigate` — URL 이동
@@ -117,8 +186,9 @@ ISSUE-004_cart_icon_hidden_in_mobile/
 
 ## Git 워크플로
 
+**SUMMARY.md 저장 시 PostToolUse Hook이 자동으로 git push한다.** 수동 push가 필요한 경우:
+
 ```bash
-# 테스트 결과 push
 cd D:\code\qa
 git add .
 git commit -m "feat: [사이트명] QA 테스트 결과 추가"

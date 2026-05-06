@@ -37,6 +37,18 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"\nimport os, re, glob, json, sys\nsys.stdin.read()\nfiles = glob.glob('D:/code/qa/*/SUMMARY.md')\nif not files:\n    print(json.dumps({'systemMessage': '🤖 QA Agent 시작\\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n아직 테스트 기록 없음\\n💬 targets.json 읽고 QA 테스트 실행해줘'}))\n    exit(0)\nlatest = max(files, key=os.path.getmtime)\ncontent = open(latest, encoding='utf-8').read()\nsession_dir = os.path.basename(os.path.dirname(latest))\npass_m = re.search(r'PASS.*?(\\\\d+)개', content)\nfail_m = re.search(r'FAIL.*?(\\\\d+)개', content)\nwarn_m = re.search(r'WARNING.*?(\\\\d+)개', content)\nurl_m  = re.search(r'대상 URL.*?(https?://\\\\S+)', content)\ndate_m = re.search(r'테스트 일시.*?(\\\\d{4}-\\\\d{2}-\\\\d{2})', content)\npasses = pass_m.group(1) if pass_m else '?'\nfails  = fail_m.group(1) if fail_m else '?'\nwarn   = warn_m.group(1) if warn_m else '?'\nurl    = url_m.group(1)  if url_m  else session_dir\ndate   = date_m.group(1) if date_m else '?'\ntry:\n    t = json.load(open('D:/code/qa/targets.json', encoding='utf-8'))\n    next_url = t['targets'][0]['url']\n    focus    = ', '.join(t['targets'][0].get('focus', []))\nexcept Exception:\n    next_url = '(targets.json 없음)'\n    focus = ''\nstatus = '✅ CLEAN' if fails == '0' else f'🔴 {fails}건 FAIL'\nmsg = f'🤖 QA Agent 시작\\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n📅 마지막 실행: {date} | {url}\\n결과: {status}  ✅{passes}  ❌{fails}  ⚠️{warn}\\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n🎯 다음 대상: {next_url}\\n📌 포커스: {focus}\\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n💬 targets.json 읽고 QA 테스트 실행해줘'\nprint(json.dumps({'systemMessage': msg}))\n\" 2>/dev/null || true",
+            "statusMessage": "🤖 QA Agent 대시보드 로딩 중...",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }
