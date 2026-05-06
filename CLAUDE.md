@@ -184,6 +184,40 @@ ISSUE-004_cart_icon_hidden_in_mobile/
 
 ---
 
+## Slack 알림 설정
+
+QA 완료 시 Slack에 자동 메시지를 보내려면 Webhook URL을 환경변수로 등록한다.
+
+### Slack Incoming Webhook 발급
+1. https://api.slack.com/apps → **Create New App**
+2. **Incoming Webhooks** 활성화 → **Add New Webhook to Workspace**
+3. 채널 선택 후 URL 복사 (`https://hooks.slack.com/services/...`)
+
+### 환경변수 등록 (Windows)
+```powershell
+[System.Environment]::SetEnvironmentVariable("SLACK_QA_WEBHOOK", "https://hooks.slack.com/services/YOUR/WEBHOOK/URL", "User")
+```
+등록 후 Claude Code 재시작 필요.
+
+### 전송되는 메시지 예시
+```
+✅ QA 완료 | practicesoftwaretesting.com
+PASS 6  FAIL 0  WARN 2
+https://github.com/tempesty-ai/UI_Test
+```
+```
+🔴 QA 완료 | practicesoftwaretesting.com
+PASS 6  FAIL 2  WARN 2
+발견된 이슈:
+• 모바일 이미지 미렌더링
+• 콘솔 에러 3건
+https://github.com/tempesty-ai/UI_Test
+```
+
+`SLACK_QA_WEBHOOK` 환경변수가 없으면 알림을 보내지 않고 조용히 넘어간다.
+
+---
+
 ## Git 워크플로
 
 **SUMMARY.md 저장 시 PostToolUse Hook이 자동으로 git push한다.** 수동 push가 필요한 경우:

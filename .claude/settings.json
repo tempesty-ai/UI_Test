@@ -34,6 +34,12 @@
             "command": "python -c \"\nimport os, re, glob, json, sys\nsys.stdin.read()\nfiles = glob.glob('D:/code/qa/*/SUMMARY.md')\nif not files:\n    exit(0)\nlatest = max(files, key=os.path.getmtime)\ncontent = open(latest, encoding='utf-8').read()\npass_m = re.search(r'PASS.*?(\\\\d+)개', content)\nfail_m = re.search(r'FAIL.*?(\\\\d+)개', content)\nwarn_m = re.search(r'WARNING.*?(\\\\d+)개', content)\nurl_m  = re.search(r'대상 URL.*?(https?://\\\\S+)', content)\npasses = pass_m.group(1) if pass_m else '?'\nfails  = fail_m.group(1) if fail_m else '?'\nwarn   = warn_m.group(1) if warn_m else '?'\nurl    = url_m.group(1)  if url_m  else ''\nmsg = f'📋 QA 완료 | {url}\\n✅ PASS {passes}  ❌ FAIL {fails}  ⚠️ WARN {warn}'\nprint(json.dumps({'systemMessage': msg}))\n\" 2>/dev/null || true",
             "statusMessage": "📋 QA 결과 요약 중...",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python -c \"\nimport os, re, glob, json, sys, urllib.request\nsys.stdin.read()\nwebhook = os.environ.get('SLACK_QA_WEBHOOK', '')\nif not webhook: exit(0)\nfiles = glob.glob('D:/code/qa/*/SUMMARY.md')\nif not files: exit(0)\nlatest = max(files, key=os.path.getmtime)\ncontent = open(latest, encoding='utf-8').read()\npass_m = re.search('PASS.*?([0-9]+)개', content)\nfail_m = re.search('FAIL.*?([0-9]+)개', content)\nwarn_m = re.search('WARNING.*?([0-9]+)개', content)\nurl_m  = re.search('대상 URL.*?(https?://[^ ]+)', content)\npasses = pass_m.group(1) if pass_m else '?'\nfails  = fail_m.group(1) if fail_m else '?'\nwarn   = warn_m.group(1) if warn_m else '?'\nurl    = url_m.group(1).rstrip('*') if url_m else 'unknown'\nemoji  = ':white_check_mark:' if fails == '0' else ':red_circle:'\nissues = re.findall('ISSUE-[0-9]+.*?\\\\*\\\\*: (.+)', content)\nissue_text = ('\\n발견된 이슈:\\n' + '\\n'.join('• ' + i for i in issues[:5])) if issues else ''\ntext   = emoji + ' *QA 완료* | ' + url + '\\nPASS ' + passes + '  FAIL ' + fails + '  WARN ' + warn + issue_text + '\\nhttps://github.com/tempesty-ai/UI_Test'\npayload = json.dumps({'text': text}).encode('utf-8')\nreq = urllib.request.Request(webhook, data=payload, headers={'Content-Type': 'application/json'})\nurllib.request.urlopen(req, timeout=5)\n\" 2>/dev/null || true",
+            "statusMessage": "📣 Slack 알림 전송 중...",
+            "timeout": 10
           }
         ]
       }
