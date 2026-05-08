@@ -246,7 +246,7 @@ def main():
     if len(sys.argv) > 1:
         summary_path = sys.argv[1]
     else:
-        files = glob.glob("D:/code/qa/*/SUMMARY.md")
+        files = glob.glob(str(Path(__file__).resolve().parents[1] / "*" / "SUMMARY.md"))
         if not files:
             print("❌ SUMMARY.md 파일을 찾을 수 없습니다.")
             sys.exit(1)

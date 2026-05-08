@@ -1,238 +1,126 @@
-# UI_Test — QA Visual Tester
+# UI_Test - Visual QA Pipeline with Claude Code
 
-> Playwright MCP + Claude Code Hook 기반 웹 애플리케이션 시각적 QA 자동화 시스템
+> A visual QA execution pipeline built around Claude Code hooks and Playwright MCP.
+> Instead of presenting it as a fully autonomous agent system, this repository documents what is automated, what is measured, and where human QA judgment is still required.
 
-GitHub: https://github.com/tempesty-ai/UI_Test
+## Data Disclaimer
 
----
+All target sites in this repository are public demo sites, such as `practicesoftwaretesting.com`. No current or former company or customer service URL, screen, internal data, or production workflow is included. `targets.json` is the source of truth for the inspected URLs.
 
-## 왜 만들었나
+## Problem
 
-### 문제
+Visual QA work often includes repeated manual checks across desktop, tablet, and mobile viewports. It also requires consistent evidence: screenshots, console logs, and issue summaries.
 
-웹 서비스를 배포할 때마다 반복되는 수동 QA 사이클이 있다.
+This project aims to make the repeated parts automatic while keeping the human decision point clear: QA decides what should be inspected by editing `targets.json`.
 
-```
-배포 → QA 엔지니어가 직접 브라우저 열기 → 항목 하나씩 체크
-     → 이슈 발견 시 Jira/Notion에 직접 기록 → 다음 배포 때 재확인
-```
+## What Was Built
 
-이 과정의 실제 문제:
+| Component | Role |
+| --- | --- |
+| Playwright MCP calls | Open pages, inspect viewports, capture screenshots, and gather browser evidence |
+| Claude Code hooks | Add guardrails around execution, reporting, session summaries, and optional notifications |
+| `targets.json` | Defines the public demo sites and focus areas |
+| Standard output folders | Stores `SUMMARY.md`, issue details, screenshots, and reports in a repeatable structure |
 
-- **속도**: 사이트 1개 기본 QA에 숙련자도 1~2시간 소요
-- **일관성**: 사람마다 체크하는 항목이 다르고, 피로하면 누락 발생
-- **회귀 추적**: "지난번에 발견한 이슈가 고쳐졌나?" 를 매번 수동으로 비교
-- **다중 환경**: 데스크톱·태블릿·모바일을 모두 확인하려면 시간이 3배
+## Hook Design
 
-### 해결
+| Hook | Timing | Purpose |
+| --- | --- | --- |
+| `PreToolUse` | Before browser navigation | Checks target availability and blocks unavailable targets |
+| `PostToolUse` | After result files are written | Generates reports and can create follow-up records |
+| `Stop` | When Claude finishes | Summarizes PASS/FAIL/WARN counts |
+| `SessionStart` | When a session starts | Shows the latest result and next target context |
 
-**AI 에이전트에게 QA 자체를 위임한다.**
+The important design point is that the inspection procedure and side effects are kept outside the model's main reasoning flow.
 
-`"QA 해줘"` 한 마디(또는 매일 09:00 자동 트리거)만으로:
+## Inspection Areas
 
-1. 브라우저를 직접 열어 3개 뷰포트(데스크톱·태블릿·모바일) 전수 확인
-2. 이슈 발견 시 심각도 분류(P1/P2/P3) + 스크린샷 자동 첨부
-3. 이전 세션 결과와 비교해 회귀(🆕신규·🔁지속·✅해결) 자동 판정
-4. 결과를 GitHub에 자동 push + HTML 리포트 생성 + Slack 알림 전송
+| Category | Checks |
+| --- | --- |
+| Page loading | HTTP response and resource loading |
+| Layout/UI | Broken layout, overlap, alignment, clipped text |
+| Navigation | Menu and link behavior |
+| Forms/interactions | Input, buttons, validation messages |
+| Responsive layout | Desktop, tablet, and mobile viewports |
+| Content | Images and text rendering |
+| Error handling | Invalid input and console errors |
 
-**사람이 신경 쓸 것: targets.json에 URL 1줄. 그게 전부다.**
+## Severity Guide
 
----
+| Level | Criteria |
+| --- | --- |
+| P1 Critical | Core function is blocked |
+| P2 Major | Major feature damage, responsive breakage, or console error |
+| P3 Minor | Text clipping, visual polish issue, or UX inconvenience |
 
-## 효율 / 임팩트
+## Quick Start
 
-### 작업 시간 단축
-
-| 작업 | 수동 | 자동화 후 | 절감 |
-|------|------|----------|------|
-| 사이트 1개 기본 QA (3 뷰포트) | 60~90분 | **5~10분** | ~85% |
-| 이슈 문서화 (Notion/Jira 기록) | 10~20분/건 | **0분** (자동 생성) | 100% |
-| 회귀 비교 (이전 결과 대조) | 20~30분 | **0분** (자동 비교) | 100% |
-| GitHub Issue 등록 | 5~10분/건 | **0분** (Hook 자동 등록) | 100% |
-| 팀 공유 (Slack 보고) | 5분 | **0분** (Hook 자동 전송) | 100% |
-
-> 사이트 1개 기준, 배포 1회당 약 **1.5~2시간 → 10분 이하**로 단축
-
-### 품질 커버리지
-
-| 항목 | 수동 QA | 이 시스템 |
-|------|--------|---------|
-| 체크 항목 일관성 | 사람마다 다름 | SKILL.md 기준으로 **항상 동일** |
-| 반응형 뷰포트 | 놓치기 쉬움 | **3개 뷰포트 전수 자동 체크** |
-| 콘솔 에러 감지 | 개발자 아니면 모름 | **JS 콘솔 에러 자동 수집** |
-| 이미지 broken 감지 | 육안으로만 | **JS로 전체 img 태그 자동 검사** |
-| 다중 사이트 | 사이트 수만큼 인력 필요 | **targets.json에 URL 추가만 하면 순차 실행** |
-
-### 아키텍처 확장성
-
-- **신규 사이트 추가 비용**: `targets.json`에 URL 1줄 추가 (개발 0분)
-- **신규 테스트 항목 추가**: `SKILL.md` 수정 1회 → 이후 모든 실행에 반영
-- **알림 채널 추가**: Hook에 엔드포인트 1개 추가 (Slack → Teams / PagerDuty 등)
-
----
-
-## 핵심 개념 정리
-
-### AI 에이전트란?
-
-일반 프로그램은 "A이면 B해라"처럼 모든 행동이 코드에 미리 적혀있다.
-**AI 에이전트는 목표만 주면 스스로 방법을 판단하고 행동한다.**
-
-```
-일반 프로그램  →  시키는 것만 함 (판단 없음)
-AI 에이전트   →  목표를 받아 스스로 계획하고 실행 (판단 있음)
-```
-
-이 프로젝트에서 Claude는 `"QA 해줘"` 한 마디를 받아
-무엇을 먼저 테스트할지, 어떤 도구를 쓸지, 이슈를 어떻게 분류할지
-**스스로 판단해서 끝까지 실행한다.**
-
----
-
-### 하네스 엔지니어링이란?
-
-AI 에이전트가 혼자 행동하면 실수하거나 비효율적일 수 있다.
-**하네스(Harness)는 에이전트 바깥에서 행동 전후를 자동으로 통제하는 구조다.**
-
-> 하네스(Harness) = 말에 채우는 마구(고삐). 말이 아무리 빨라도 방향을 잡아주는 것.
-
-- 에이전트가 잘못된 방향으로 가면 → **막는다** (가드레일)
-- 에이전트가 결과를 저장하면 → **자동으로 백업한다** (부작용 자동화)
-- 에이전트가 일을 끝내면 → **요약을 뽑아낸다** (자동 리포트)
-
-**에이전트는 하네스의 존재를 모른다. 그냥 일하는데 뒤에서 알아서 돌아간다.**
-
----
-
-### SKILL.md는 뭐가 다른가?
-
-```
-SKILL.md   →  에이전트 안에 영향을 준다
-              "QA를 할 때는 이런 순서로 생각해" 라고 가르치는 것
-              에이전트 설계
-
-하네스     →  에이전트 밖에서 개입한다
-              에이전트가 행동하는 타이밍에 자동으로 끼어드는 것
-              에이전트 제어
-```
-
-| | SKILL.md | 하네스 (Hook) |
-|--|---------|--------------|
-| 누가 읽나 | Claude | Claude Code 런타임 |
-| 언제 작동 | Claude가 생각할 때 | Claude가 도구를 쓰는 순간 |
-| 목적 | 판단 방식 가르치기 | 행동 전후 자동 제어 |
-| Claude가 아나 | ✅ 알고 따름 | ❌ 모름 |
-
----
-
-## 이 프로젝트에 적용한 것들
-
-### AI 에이전트 — Claude가 스스로 판단하는 부분
-
-| 구성요소 | 역할 |
-|---------|------|
-| **SKILL.md** | Claude에게 QA 절차·판단 기준·출력 형식을 가르침 |
-| **targets.json** | Claude가 읽는 설정 파일. URL만 바꾸면 대상 자동 변경 |
-| **Playwright MCP** | Claude가 직접 호출하는 브라우저 조작 도구 |
-| **Cron 스케줄러** | 평일 09:00 Claude에게 자동으로 QA 프롬프트 주입 |
-
-### 하네스 — 에이전트 밖에서 자동으로 제어하는 부분
-
-| Hook | 언제 발동 | 하는 일 |
-|------|---------|--------|
-| **PreToolUse** | Claude가 브라우저 열기 직전 | 대상 사이트 생사 여부 확인. 다운이면 차단 |
-| **PostToolUse** | Claude가 SUMMARY.md 저장 직후 | 자동으로 git add → commit → push |
-| **Stop** | Claude가 응답 완료 직후 | PASS / FAIL / WARN 카운트 터미널 출력 |
-| **SessionStart** | Claude Code 세션 시작 시 | 마지막 결과 + 다음 대상 대시보드 주입 |
-
----
-
-## 전체 흐름
-
-```
-[Cron 09:00] 자동 트리거 ──────────────────────────────┐
-                                                       │ 사람이 직접 말해도 동일
-[SessionStart Hook] "어제 결과 / 오늘 대상" 브리핑       │
-        ↓                                              │
-[Claude + SKILL.md] targets.json 읽고 테스트 계획 수립 ←┘
-        ↓
-[PreToolUse Hook] URL 죽었으면 여기서 차단
-        ↓
-[Playwright MCP] 실제 브라우저 — 3개 뷰포트 테스트
-        ↓
-[PostToolUse Hook] SUMMARY.md 저장 감지 → GitHub 자동 push
-        ↓
-[Stop Hook] PASS / FAIL / WARN 요약 출력
-```
-
-**에이전트가 일하고, 하네스가 그 전후를 통제한다. 사람은 targets.json URL만 관리하면 끝.**
-
----
-
-## 빠른 시작
-
-### 1. 테스트 대상 설정
-
-`targets.json` 에서 URL을 수정한다:
+Edit `targets.json` with public demo targets only:
 
 ```json
 {
   "targets": [
     {
-      "url": "https://your-site.com",
-      "name": "your_site",
-      "focus": ["반응형", "로그인", "검색"]
+      "url": "https://your-public-demo-site.example",
+      "name": "demo_site",
+      "focus": ["responsive", "login", "search"]
     }
   ]
 }
 ```
 
-### 2. 테스트 실행
+Then run in Claude Code:
 
-`D:\code\qa` 에서 Claude Code를 열고:
-
-```
-targets.json 읽고 QA 테스트 실행해줘
+```text
+Read targets.json and run a QA inspection.
 ```
 
-### 3. 결과 확인
+## Outputs
 
-테스트 완료 후 자동으로:
-- `[날짜]_[도메인]/SUMMARY.md` — 이슈 요약 리포트
-- `[날짜]_[도메인]/issues/ISSUE-XXX_*/` — 이슈별 스크린샷 + 상세 기록
-- GitHub에 자동 push
+After an inspection, the pipeline stores:
 
----
+- `[date]_[domain]/SUMMARY.md` - issue summary report
+- `[date]_[domain]/issues/ISSUE-XXX_*/` - issue details and screenshots
+- `report.html` - generated HTML report when enabled
 
-## 테스트 항목
+## QA Value
 
-| 카테고리 | 내용 |
-|---------|------|
-| 페이지 로딩 | HTTP 응답, 리소스 로딩 |
-| 레이아웃/UI | 깨짐, 겹침, 정렬 |
-| 네비게이션 | 메뉴, 링크 동작 |
-| 폼/인터랙션 | 입력, 버튼, 유효성 검사 |
-| 반응형 | 데스크톱(1280px) / 태블릿(768px) / 모바일(375px) |
-| 콘텐츠 | 이미지 로딩, 텍스트 |
-| 에러 처리 | 잘못된 입력, 에러 메시지 |
+| Manual approach | Pipeline approach |
+| --- | --- |
+| Manually capture every viewport | Capture desktop/tablet/mobile evidence in a repeatable way |
+| Result format changes by person | `SUMMARY.md` and `issues/` follow a standard structure |
+| Evidence is scattered in chat or email | Git history can preserve inspection outputs over time |
 
-## 이슈 심각도
+The value is less about one inspection and more about quality changes over time.
 
-| 레벨 | 기준 |
-|------|------|
-| P1 Critical | 핵심 기능 동작 불가 |
-| P2 Major | 주요 기능 손상, 반응형 깨짐, 콘솔 에러 |
-| P3 Minor | UI 텍스트 잘림, UX 불편 |
+## Outcome
 
----
+| Item | Measurement |
+| --- | --- |
+| One site across three viewports | Manual about 25 to 30 minutes -> automated about 5 to 8 minutes |
+| Output consistency | Same `SUMMARY.md` plus `issues/` structure each run |
+| Traceability | Results can be tracked through git history |
+| Human input point | Edit `targets.json` once per target set |
 
-## 기술 스택
+## Limits
 
-| 기술 | 용도 |
-|------|------|
-| **Claude Code** | AI 에이전트 실행 환경 |
-| **Claude Code Skill** | `qa-visual-tester` — QA 판단 절차 정의 |
-| **Claude Code Hooks** | 4단계 하네스 (PreToolUse / PostToolUse / Stop / SessionStart) |
-| **Playwright MCP** (`@playwright/mcp`) | 실제 브라우저 제어 |
-| **CronCreate** | 자율 스케줄링 (평일 09:00 자동 실행) |
-| **Git** | 테스트 결과 자동 버전 관리 |
+- This is not a complete agentic QA system. It is a Claude Code hook plus Playwright MCP pipeline.
+- Judgment accuracy has not been fully benchmarked. False positives and false negatives still need measurement.
+- Targets should remain public demo sites unless a separate security review is done.
+- Runtime cost depends on Claude reasoning and inspection frequency.
+
+## Tech Stack
+
+| Technology | Purpose |
+| --- | --- |
+| Claude Code | Execution environment |
+| Claude Code skill | Inspection procedure and output format |
+| Claude Code hooks | Guardrails and post-processing |
+| Playwright MCP | Browser automation |
+| Git | Versioned evidence and result tracking |
+
+## Roadmap
+
+- Add false-positive and false-negative benchmark cases
+- Visualize quality trends across repeated inspections
+- Add a separate secure mode for authenticated demo targets

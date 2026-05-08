@@ -13,7 +13,7 @@ GitHub: https://github.com/tempesty-ai/UI_Test
 ## 디렉토리 구조
 
 ```
-D:\code\qa\
+<project_root>\
 ├── .claude/
 │   └── settings.json                   ← Hook 파이프라인 설정
 ├── qa-visual-tester/
@@ -44,7 +44,7 @@ targets.json 읽고 QA 테스트 실행해줘
 1. `targets.json` 에서 URL·테스트 범위 읽기
 2. 테스트 시트 작성
 3. Playwright MCP(`mcp__playwright__*`)로 실제 브라우저 검증
-4. `D:\code\qa\[YYYYMMDD_도메인]\` 하위에 결과 저장
+4. `<project_root>\[YYYYMMDD_도메인]\` 하위에 결과 저장
 
 ---
 
@@ -96,7 +96,7 @@ targets.json 읽고 QA 테스트 실행해줘
 
 ## Hook 파이프라인 (하네스)
 
-`.claude/settings.json` 에 3단계 Hook이 등록되어 있다. `D:\code\qa` 에서 Claude Code를 열면 자동 활성화된다.
+`.claude/settings.json` 에 3단계 Hook이 등록되어 있다. `<project_root>` 에서 Claude Code를 열면 자동 활성화된다.
 
 | 단계 | Hook | 이벤트 | 동작 |
 |------|------|--------|------|
@@ -111,7 +111,7 @@ targets.json 읽고 QA 테스트 실행해줘
 - `mcp__playwright__browser_evaluate` — JS 실행 (이미지 broken 여부 등 검사)
 
 **스크린샷 저장 경로 주의**
-Playwright MCP는 프로젝트 루트 내부에만 파일 저장이 가능하다. 스크린샷을 `.playwright-mcp/qa-session/` 에 저장한 뒤 `D:\code\qa\` 로 복사한다.
+Playwright MCP는 프로젝트 루트 내부에만 파일 저장이 가능하다. 스크린샷을 `.playwright-mcp/qa-session/` 에 저장한 뒤 `<project_root>\` 로 복사한다.
 
 ---
 
@@ -252,7 +252,7 @@ https://github.com/tempesty-ai/UI_Test
 **SUMMARY.md 저장 시 PostToolUse Hook이 자동으로 git push한다.** 수동 push가 필요한 경우:
 
 ```bash
-cd D:\code\qa
+cd <project_root>
 git add .
 git commit -m "feat: [사이트명] QA 테스트 결과 추가"
 git push

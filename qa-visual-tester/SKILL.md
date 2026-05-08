@@ -5,7 +5,7 @@ description: >
   UI 검증, 화면 캡처 검증, 기능 테스트, 웹사이트/URL 테스트를 언급하거나 요청할 때 반드시 
   이 스킬을 사용하라. 요구사항을 받아 QA 테스트 시트(테스트 케이스 목록)를 작성하고, 
   Microsoft Playwright MCP를 통해 실제 브라우저 화면을 보면서 각 항목을 직접 검증한다. 
-  발견된 이슈는 D:\code\qa\ 하위에 이슈별 디렉토리를 만들어 스크린샷과 상세 기록을 저장한다.
+  발견된 이슈는 <project_root>\ 하위에 이슈별 디렉토리를 만들어 스크린샷과 상세 기록을 저장한다.
   "QA해줘", "테스트해줘", "이 URL 테스트", "화면 검증", "버그 찾아줘" 같은 말이 나오면 
   즉시 이 스킬을 사용하라.
 ---
@@ -224,7 +224,7 @@ targets.json에 "extra" 항목이 있으면 해당 시나리오를 추가로 실
 ### 디렉토리 구조
 
 ```
-D:\code\qa\
+<project_root>\
 └── [YYYYMMDD_HHMMSS]_[도메인]/      ← 테스트 세션 루트
     ├── QA_SHEET.md                   ← 전체 테스트 시트 + 결과 요약
     ├── SUMMARY.md                    ← 이슈 요약 리포트
@@ -309,7 +309,7 @@ D:\code\qa\
 같은 사이트(`name`)로 실행된 이전 세션 디렉토리를 찾는다:
 
 ```
-D:\code\qa\
+<project_root>\
 ├── 20260506_practicesoftwaretesting\  ← 이전 세션
 │   └── SUMMARY.md
 └── 20260507_practicesoftwaretesting\  ← 현재 세션 (방금 저장)

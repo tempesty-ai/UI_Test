@@ -64,7 +64,7 @@
 ## 저장 경로
 
 ```
-D:\code\qa\20260506_practicesoftwaretesting\
+<project_root>\20260506_practicesoftwaretesting\
 ├── QA_SHEET.md
 ├── SUMMARY.md
 └── issues\
