@@ -1,126 +1,183 @@
-# UI_Test - Claude Code 기반 시각적 QA 파이프라인
+# `UI_Test` — AI 에이전트 + 하네스 기반 시각적 QA
 
-> Claude Code hook과 Playwright MCP를 중심으로 구성한 시각적 QA 실행 파이프라인입니다.
-> 완전 자율 에이전트 시스템으로 포장하기보다, 무엇을 자동화했고 무엇을 측정하며 어디에 사람의 QA 판단이 필요한지 문서화합니다.
+> **Playwright MCP + Claude Code Hook**을 결합해 매일 아침 자동으로 도는 시각적 QA 파이프라인.
+> 핵심은 "AI가 자율적으로 일하게 두는 것"이 아니라, **"자율 행동을 하네스로 통제해 운영에 위임 가능하게 만드는 것"** 입니다.
 
-## 데이터 안내
+GitHub: <https://github.com/tempesty-ai/UI_Test>
 
-이 저장소의 대상 사이트는 `practicesoftwaretesting.com` 같은 공개 데모 사이트입니다. 현재 또는 과거 회사/고객사의 서비스 URL, 화면, 내부 데이터, 운영 workflow는 포함하지 않습니다. `targets.json`이 검사 대상 URL의 기준입니다.
+---
 
-## 문제
+## 한 줄 가치
 
-시각적 QA 업무에는 desktop, tablet, mobile viewport를 반복적으로 확인하는 작업이 자주 포함됩니다. 또한 screenshot, console log, issue summary 같은 일관된 증거가 필요합니다.
+> **"사람 없이 매일 돌 수 있는 시각 QA를 어떻게 만드는가?"** 에 답하는 저장소.
+> 사람은 `targets.json`의 URL만 관리하면 됩니다. 나머지는 매일 09:00에 자동으로 돕니다.
 
-이 프로젝트는 반복되는 부분을 자동화하되, 사람의 판단 지점을 명확히 남기는 것을 목표로 합니다. QA는 `targets.json`을 편집해 무엇을 검사할지 결정합니다.
+---
 
-## 구현 내용
+## 발견한 크리티컬 리스크
 
-| 구성 요소 | 역할 |
-| --- | --- |
-| Playwright MCP 호출 | 페이지 열기, viewport 검사, screenshot 캡처, browser evidence 수집 |
-| Claude Code hooks | 실행, 보고, session summary, 선택적 알림에 guardrail 추가 |
-| `targets.json` | 공개 데모 사이트와 focus area 정의 |
-| 표준 출력 폴더 | `SUMMARY.md`, issue detail, screenshot, report를 반복 가능한 구조로 저장 |
-
-## Hook 설계
-
-| Hook | 시점 | 목적 |
+| # | 리스크 | 의미 |
 | --- | --- | --- |
-| `PreToolUse` | Browser navigation 전 | 대상 접근 가능 여부를 확인하고 unavailable target 차단 |
-| `PostToolUse` | 결과 파일 작성 후 | report 생성 및 후속 기록 생성 가능 |
-| `Stop` | Claude 작업 종료 시 | PASS/FAIL/WARN count 요약 |
-| `SessionStart` | session 시작 시 | 최신 결과와 다음 target context 표시 |
+| R1 | **시각적 회귀** | HTTP 200을 받아도 레이아웃 깨짐 / 요소 겹침 / 모바일 깨짐은 일반 자동화 테스트로 감지가 어려움 |
+| R2 | **AI 에이전트의 자율 행동** | "QA 해줘" 한 마디로 AI가 자율 실행할 때 → 죽은 사이트에 계속 요청을 보내거나, 결과를 저장만 하고 공유하지 않거나, 실패 사유를 누락할 수 있음 |
+| R3 | **반복 비용** | 사람이 매일 3개 뷰포트(데스크톱·태블릿·모바일)를 수동 점검하면 비용 누적 + 일관성 저하 |
 
-중요한 설계 포인트는 검사 절차와 side effect를 모델의 주 추론 흐름 밖에 둔다는 것입니다.
+→ 그래서 **에이전트 안쪽(스킬)** 과 **에이전트 바깥쪽(하네스)** 을 분리해 설계했습니다.
 
-## 검사 영역
+---
 
-| 분류 | 확인 항목 |
+## 핵심 개념 — 스킬 vs 하네스
+
+### AI 에이전트란?
+
+일반 프로그램은 "A이면 B해라"처럼 모든 행동이 코드에 미리 적혀있다. **AI 에이전트는 목표만 주면 스스로 방법을 판단하고 행동한다.**
+
+```
+일반 프로그램  →  시키는 것만 함 (판단 없음)
+AI 에이전트   →  목표를 받아 스스로 계획하고 실행 (판단 있음)
+```
+
+이 프로젝트에서 Claude는 `"QA 해줘"` 한 마디를 받아 무엇을 먼저 테스트할지, 어떤 도구를 쓸지, 이슈를 어떻게 분류할지 **스스로 판단해서 끝까지 실행한다.**
+
+### 하네스 엔지니어링이란?
+
+AI 에이전트가 혼자 행동하면 실수하거나 비효율적일 수 있다. **하네스(Harness)는 에이전트 바깥에서 행동 전후를 자동으로 통제하는 구조다.**
+
+> 하네스 = 말에 채우는 마구(고삐). 말이 아무리 빨라도 방향을 잡아주는 것.
+
+- 에이전트가 잘못된 방향으로 가면 → **막는다** (가드레일)
+- 에이전트가 결과를 저장하면 → **자동으로 백업한다** (부작용 자동화)
+- 에이전트가 일을 끝내면 → **요약을 뽑아낸다** (자동 리포트)
+
+**에이전트는 하네스의 존재를 모른다. 그냥 일하는데 뒤에서 알아서 돌아간다.**
+
+### SKILL.md는 뭐가 다른가?
+
+|  | SKILL.md | 하네스 (Hook) |
+| --- | --- | --- |
+| 누가 읽나 | Claude | Claude Code 런타임 |
+| 언제 작동 | Claude가 생각할 때 | Claude가 도구를 쓰는 순간 |
+| 목적 | 판단 방식 가르치기 | 행동 전후 자동 제어 |
+| Claude가 인지하나 | ✅ 알고 따름 | ❌ 모름 |
+
+---
+
+## 테스트 설계
+
+### 에이전트 안쪽 — Claude가 스스로 판단
+
+| 구성요소 | 역할 |
 | --- | --- |
-| 페이지 로딩 | HTTP response와 resource loading |
-| Layout/UI | 깨진 layout, overlap, alignment, clipped text |
-| Navigation | menu와 link 동작 |
-| Form/interaction | input, button, validation message |
-| 반응형 layout | desktop, tablet, mobile viewport |
-| Content | image와 text rendering |
-| 오류 처리 | invalid input과 console error |
+| **SKILL.md** | QA 절차·판단 기준·출력 형식을 가르침 |
+| **targets.json** | Claude가 읽는 설정. URL만 바꾸면 대상 변경 |
+| **Playwright MCP** | Claude가 직접 호출하는 브라우저 조작 도구 |
+| **Cron 스케줄러** | 평일 09:00 자동으로 QA 프롬프트 주입 |
 
-## 심각도 기준
+### 에이전트 바깥 — 하네스(4단계)
 
-| 수준 | 기준 |
+| Hook | 발동 시점 | 하는 일 | 어떤 리스크를 막는가 |
+| --- | --- | --- | --- |
+| **PreToolUse** | 브라우저 열기 직전 | 대상 사이트 생사 여부 확인, 다운이면 차단 | 죽은 URL에 반복 호출 |
+| **PostToolUse** | SUMMARY.md 저장 직후 | git add → commit → push 자동 실행 | 결과 공유 누락 |
+| **Stop** | 응답 완료 직후 | PASS / FAIL / WARN 카운트 터미널 출력 | 결과 가시성 부족 |
+| **SessionStart** | 세션 시작 시 | 마지막 결과 + 다음 대상 대시보드 주입 | 컨텍스트 단절 |
+
+### 전체 흐름
+
+```
+[Cron 09:00] 자동 트리거 ──────────────────────────────┐
+                                                       │ 사람이 직접 말해도 동일
+[SessionStart Hook] "어제 결과 / 오늘 대상" 브리핑      │
+        ↓                                              │
+[Claude + SKILL.md] targets.json 읽고 테스트 계획 ←─────┘
+        ↓
+[PreToolUse Hook] URL 죽었으면 여기서 차단
+        ↓
+[Playwright MCP] 실제 브라우저 — 3개 뷰포트 테스트
+        ↓
+[PostToolUse Hook] SUMMARY.md 저장 감지 → GitHub 자동 push
+        ↓
+[Stop Hook] PASS / FAIL / WARN 요약 출력
+```
+
+**에이전트가 일하고, 하네스가 그 전후를 통제한다.**
+
+### 테스트 항목
+
+| 카테고리 | 내용 |
 | --- | --- |
-| P1 Critical | 핵심 기능이 막힘 |
-| P2 Major | 주요 기능 손상, 반응형 깨짐, console error |
-| P3 Minor | text clipping, visual polish issue, UX 불편 |
+| 페이지 로딩 | HTTP 응답, 리소스 로딩 |
+| 레이아웃 / UI | 깨짐, 겹침, 정렬 |
+| 네비게이션 | 메뉴, 링크 동작 |
+| 폼 / 인터랙션 | 입력, 버튼, 유효성 검사 |
+| 반응형 | 데스크톱(1280px) / 태블릿(768px) / 모바일(375px) |
+| 콘텐츠 | 이미지 로딩, 텍스트 |
+| 에러 처리 | 잘못된 입력, 에러 메시지 |
+
+### 이슈 심각도
+
+| 레벨 | 기준 |
+| --- | --- |
+| P1 Critical | 핵심 기능 동작 불가 |
+| P2 Major | 주요 기능 손상, 반응형 깨짐, 콘솔 에러 |
+| P3 Minor | UI 텍스트 잘림, UX 불편 |
+
+---
+
+## 자동화의 비즈니스 임팩트
+
+| 임팩트 | 어떻게 발생하는가 |
+| --- | --- |
+| **운영 위임 가능** | 사람은 `targets.json` URL만 관리. 나머지는 매일 자동 → QA 인력이 더 중요한 판단 업무에 집중 |
+| **증거 자동 보존** | 이슈별 스크린샷·상세 기록이 GitHub에 자동 푸시 → 감사 / 재현 / 공유가 즉시 가능 |
+| **에이전트 리스크 통제** | 하네스가 잘못된 행동을 막고 결과를 정형화 → **"AI에 맡겼더니 일이 더 늘었다"** 시나리오 차단 |
+| **반응형 회귀 가시화** | 3개 뷰포트 비교를 매일 자동으로 → 모바일 깨짐을 사람보다 빨리 발견 |
+
+---
 
 ## 빠른 시작
 
-`targets.json`에는 공개 데모 target만 넣습니다.
+### 1. 테스트 대상 설정
+
+`targets.json` 에서 URL을 수정한다:
 
 ```json
 {
   "targets": [
     {
-      "url": "https://your-public-demo-site.example",
-      "name": "demo_site",
-      "focus": ["responsive", "login", "search"]
+      "url": "https://your-site.com",
+      "name": "your_site",
+      "focus": ["반응형", "로그인", "검색"]
     }
   ]
 }
 ```
 
-그 다음 Claude Code에서 실행합니다.
+### 2. 테스트 실행
 
-```text
-Read targets.json and run a QA inspection.
+`D:\code\qa` 에서 Claude Code를 열고:
+
+```
+targets.json 읽고 QA 테스트 실행해줘
 ```
 
-## 출력물
+### 3. 결과 확인
 
-검사 후 파이프라인은 다음 파일을 저장합니다.
+테스트 완료 후 자동으로:
 
-- `[date]_[domain]/SUMMARY.md` - issue summary report
-- `[date]_[domain]/issues/ISSUE-XXX_*/` - issue detail과 screenshot
-- `report.html` - 활성화 시 생성되는 HTML report
+- `[날짜]_[도메인]/SUMMARY.md` — 이슈 요약 리포트
+- `[날짜]_[도메인]/issues/ISSUE-XXX_*/` — 이슈별 스크린샷 + 상세 기록
+- GitHub에 자동 push
 
-## QA 가치
-
-| 수동 방식 | 파이프라인 방식 |
-| --- | --- |
-| viewport별로 매번 수동 캡처 | desktop/tablet/mobile 증거를 반복 가능한 방식으로 캡처 |
-| 사람마다 결과 형식이 달라짐 | `SUMMARY.md`와 `issues/`가 표준 구조를 따름 |
-| 증거가 chat이나 email에 흩어짐 | git history를 통해 검사 결과를 보존 가능 |
-
-가치는 한 번의 검사보다, 시간이 지나며 품질 변화를 추적할 수 있다는 점에 있습니다.
-
-## 결과
-
-| 항목 | 측정 |
-| --- | --- |
-| 하나의 사이트를 세 viewport에서 검사 | 수동 약 25~30분 -> 자동화 약 5~8분 |
-| 출력 일관성 | 매 실행마다 동일한 `SUMMARY.md`와 `issues/` 구조 |
-| 추적성 | git history를 통해 결과 추적 가능 |
-| 사람의 입력 지점 | target set별로 `targets.json`을 한 번 편집 |
-
-## 한계
-
-- 완전한 agentic QA 시스템이 아니라 Claude Code hook과 Playwright MCP 파이프라인입니다.
-- 판단 정확도는 아직 충분히 benchmark하지 않았습니다. False positive와 false negative 측정이 더 필요합니다.
-- 별도 보안 검토 전까지 target은 공개 데모 사이트로 제한해야 합니다.
-- 실행 비용은 Claude reasoning과 검사 빈도에 따라 달라집니다.
+---
 
 ## 기술 스택
 
-| 기술 | 목적 |
+| 기술 | 용도 |
 | --- | --- |
-| Claude Code | 실행 환경 |
-| Claude Code skill | 검사 절차와 출력 형식 |
-| Claude Code hooks | Guardrail과 후처리 |
-| Playwright MCP | Browser automation |
-| Git | 버전 관리되는 증거와 결과 추적 |
-
-## 로드맵
-
-- False positive/false negative benchmark case 추가
-- 반복 검사 간 품질 추세 시각화
-- 인증이 필요한 demo target을 위한 별도 secure mode 추가
+| **Claude Code** | AI 에이전트 실행 환경 |
+| **Claude Code Skill** | `qa-visual-tester` — QA 판단 절차 정의 |
+| **Claude Code Hooks** | 4단계 하네스 (PreToolUse / PostToolUse / Stop / SessionStart) |
+| **Playwright MCP** (`@playwright/mcp`) | 실제 브라우저 제어 |
+| **CronCreate** | 자율 스케줄링 (평일 09:00 자동 실행) |
+| **Git** | 테스트 결과 자동 버전 관리 |
