@@ -96,13 +96,37 @@ targets.json 읽고 QA 테스트 실행해줘
 
 ## Hook 파이프라인 (하네스)
 
-`.claude/settings.json` 에 3단계 Hook이 등록되어 있다. `<project_root>` 에서 Claude Code를 열면 자동 활성화된다.
+`.claude/settings.json` 에 4단계 Hook이 등록되어 있다. 프로젝트 루트에서 Claude Code를 열면 자동 활성화된다.
 
 | 단계 | Hook | 이벤트 | 동작 |
 |------|------|--------|------|
 | 1 | PreToolUse | Playwright navigate 직전 | URL 접근 가능 여부 체크, 다운 시 중단 |
-| 2 | PostToolUse | SUMMARY.md 저장 직후 | 자동 git add → commit → push |
+| 2 | PostToolUse | SUMMARY.md 저장 직후 | HTML 리포트 생성 → git add → commit → push |
+| 2 | PostToolUse | ISSUE.md 저장 직후 | GitHub Issue 자동 등록 (`GH_TOKEN` 있을 때만) |
 | 3 | Stop | Claude 응답 완료 후 | 터미널에 PASS/FAIL/WARN 결과 요약 출력 |
+| 3 | Stop | Claude 응답 완료 후 | Slack 알림 전송 (`SLACK_QA_WEBHOOK` 있을 때만) |
+| 4 | SessionStart | 세션 시작 시 | 마지막 결과 + 다음 대상 대시보드 주입 |
+
+4개 이벤트에 총 6개 명령이 등록되어 있다. 환경변수가 없는 훅은 조용히 건너뛴다.
+
+### 설정 파일 배치 (최초 1회)
+
+저장소에는 `.claude/settings.example.json` 만 포함된다. 실제 설정은
+로컬에서 만들고, 안에 있는 `<project_root>` 를 **프로젝트 절대 경로로 모두 치환**해야 한다.
+
+```bash
+cp .claude/settings.example.json .claude/settings.json
+# .claude/settings.json 의 <project_root> 를 실제 경로로 치환 (예: D:/CODE/qa)
+```
+
+치환하지 않으면 훅이 **에러 없이 조용히 실패한다.** 모든 훅 명령이
+`2>/dev/null || true` 로 감싸여 있어 실패가 표시되지 않기 때문이다.
+동작 여부는 아래로 확인한다:
+
+```bash
+python -c "import io; print(io.open('.claude/settings.json',encoding='utf-8').read().count('<project_root>'))"
+# 0 이 나와야 정상
+```
 
 **Playwright MCP 주요 도구**
 - `mcp__playwright__browser_navigate` — URL 이동

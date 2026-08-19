@@ -12,4 +12,6 @@ playwright-report/
 .vscode/
 .env
 .env.*
-.claude/
+.claude/*
+!.claude/settings.example.json
+.claude/settings.json.bak

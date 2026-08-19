@@ -103,6 +103,17 @@ AI 에이전트가 혼자 행동하면 실수하거나 비효율적일 수 있�
 
 **에이전트가 일하고, 하네스가 그 전후를 통제한다.**
 
+하네스 설정은 [`.claude/settings.example.json`](.claude/settings.example.json) 에 있습니다.
+4개 이벤트에 6개 명령이 등록되어 있고, `GH_TOKEN` / `SLACK_QA_WEBHOOK` 이 없는 훅은 조용히 건너뜁니다.
+
+```bash
+cp .claude/settings.example.json .claude/settings.json
+# 파일 안의 <project_root> 를 프로젝트 절대 경로로 모두 치환
+```
+
+> 치환하지 않으면 훅이 **에러 없이 조용히 실패합니다.** 모든 훅 명령이 `2>/dev/null || true`
+> 로 감싸여 있어 실패가 표시되지 않습니다. 자세한 확인 방법은 [CLAUDE.md](CLAUDE.md) 참고.
+
 ### 테스트 항목
 
 | 카테고리      | 내용                                             |
